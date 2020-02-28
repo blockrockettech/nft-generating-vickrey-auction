@@ -7,16 +7,6 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 
 contract NftGeneratingVickreyAuction {
 
-    //    address public highBidder;
-    //    uint256 public highBid;
-    //    uint256 public secondBid;
-
-    //    mapping(address => bool) public revealed;
-    //    mapping(address => uint256) public balanceOf;
-    //    mapping(address => bytes32) public hashedBidOf;
-    //    mapping(address => uint256) public revealedBidAmount;
-
-
     /////////////////////
     // Auction Details //
     /////////////////////
@@ -49,9 +39,9 @@ contract NftGeneratingVickreyAuction {
 
     mapping(address => Bidder) participants;
 
-    //////////////////////////
-    // Participants Details //
-    //////////////////////////
+    /////////////////
+    // The Auction //
+    /////////////////
 
     // TODO probs best created through a AuctionFactory contract so can easily watch and subgraph it
 
@@ -137,6 +127,7 @@ contract NftGeneratingVickreyAuction {
         return true;
     }
 
+    // Allowing claim NFT not sending?
     //    function claim() public {
     //        require(now >= endOfRevealing);
     //
@@ -176,7 +167,6 @@ contract NftGeneratingVickreyAuction {
         auctionClosed = true;
 
         // generates X number of NFTS for those who won
-        // transfer the winnings to the auction owner
     }
 
     // ATM you can only withdraw once you have revealed you bid
