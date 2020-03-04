@@ -59,7 +59,7 @@ contract VickreyAuction {
     }
 
     modifier onlyWhenReservePriceReached(uint256 _biddingAmount){
-        require(_biddingAmount >= reservePrice, "Bid does not met reserve price");
+        require(_biddingAmount >= reservePrice, "Bid does not meet reserve price");
         _;
     }
 
@@ -117,6 +117,7 @@ contract VickreyAuction {
     public
     returns (bool) {
         require(msg.sender != owner, "Creator cannot bid on their own items");
+        require(_sealedBid != "", "Sealed bid is blank");
 
         Bidder storage bidder = participants[msg.sender];
         bidder.bidder = msg.sender;
@@ -133,6 +134,8 @@ contract VickreyAuction {
 
         // Take ownership of the payment token (escrow into this contract)
         require(IERC20(paymentToken).transferFrom(msg.sender, address(this), _tokenOverCommitment), "Unable to escrow funds for bid");
+
+        // TODO event
 
         return true;
     }
@@ -155,6 +158,8 @@ contract VickreyAuction {
         bidder.sealedBid = 0;
 
         require(IERC20(paymentToken).transferFrom(address(this), msg.sender, tokenCommitment), "Unable to withdraw token commitment");
+
+        // TODO event
 
         return true;
     }
@@ -214,6 +219,8 @@ contract VickreyAuction {
         }
 
         // TODO keep ordered list of revealed bids
+
+        // TODO event
 
         return true;
     }

@@ -1,4 +1,4 @@
-const {BN, expectRevert, expectEvent, constants, time} = require('@openzeppelin/test-helpers');
+const {BN, expectRevert, expectEvent, constants, time, ether} = require('@openzeppelin/test-helpers');
 const {ZERO_ADDRESS} = constants;
 require('chai').should();
 
@@ -6,23 +6,21 @@ const VickreyAuction = artifacts.require('./VickreyAuction.sol');
 const SimpleNft = artifacts.require('./SimpleNft.sol');
 const MockDai = artifacts.require('./MockDAI.sol');
 
-const toEthBN = function (ethVal) {
-    return new BN(web3.utils.toWei(ethVal, 'ether').toString());
-};
-
 contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
 
+    const _100_DAI = ether('100');
+    const _30_DAI = ether('30');
+    const _50_DAI = ether('50');
+    const _29_DAI = ether('29');
 
     beforeEach(async function () {
         this.simpleNft = await SimpleNft.new({from: creator});
         this.mockDai = await MockDai.new({from: creator});
 
-        this.reservePrice = toEthBN('30'); // $30
+        this.reservePrice = _30_DAI;
         this.totalItemsForSale = new BN(10);
         this.biddingPeriod = new BN(172800); // 48hrs
         this.revealingPeriod = new BN(86400); // 24hrs
-
-        this.now = await time.latest();
 
         this.auction = await VickreyAuction.new(
             this.mockDai.address,
@@ -33,6 +31,15 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
             this.revealingPeriod,
             creator,
             {from: creator});
+
+        this.now = await time.latest();
+
+        // give bob & alice some dollar
+        await this.mockDai.mint(bob, _100_DAI);
+        this.mockDai.approve(this.auction.address, _100_DAI, {from: bob});
+
+        await this.mockDai.mint(alice, _100_DAI);
+        this.mockDai.approve(this.auction.address, _100_DAI, {from: alice});
     });
 
     describe('Auction setup correctly', async function () {
@@ -82,5 +89,54 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
         });
 
     });
+
+    describe('Placing a bid', async function () {
+
+        describe('validation checks', async function () {
+
+            it('fails if commitment less than threshold', async function () {
+                const sealedBid = generateSealedBid(_50_DAI, 'password');
+                await expectRevert(
+                    this.auction.placeBid(sealedBid, _29_DAI, {from: alice}),
+                    'Bid does not meet reserve price'
+                );
+            });
+
+            it('fails if sealed bid looks blank', async function () {
+                const sealedBid = web3.eth.abi.encodeParameter('bytes32', '0x0');
+                await expectRevert(
+                    this.auction.placeBid(sealedBid, _50_DAI, {from: alice}),
+                    'Sealed bid is blank'
+                );
+            });
+
+            it('fails if creator tried to place bid', async function () {
+                const sealedBid = generateSealedBid(_50_DAI, 'password');
+                await expectRevert(
+                    this.auction.placeBid(sealedBid, _50_DAI, {from: creator}),
+                    'Creator cannot bid on their own items'
+                );
+            });
+
+            it('fails if bidding has closed', async function () {
+
+                // Move period past bidding period
+                await time.increaseTo(this.now.add(this.biddingPeriod));
+
+                const sealedBid = generateSealedBid(_50_DAI, 'password');
+                await expectRevert(
+                    this.auction.placeBid(sealedBid, _50_DAI, {from: alice}),
+                    'Auction bidding time period has closed'
+                );
+            });
+
+        });
+
+    });
+
+    const generateSealedBid = (value, salt) => {
+        // FIXME - test this function ... ?
+        return web3.utils.keccak256(web3.utils.toHex(value) + web3.utils.toHex(salt));
+    };
 
 });
