@@ -13,6 +13,8 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
     const _50_DAI = ether('50');
     const _29_DAI = ether('29');
 
+    const _1_HOUR = new BN('3600');
+
     beforeEach(async function () {
         this.simpleNft = await SimpleNft.new({from: creator});
         this.mockDai = await MockDai.new({from: creator});
@@ -198,7 +200,18 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
                     it('should fail to reveal bid', async function () {
                         await expectRevert(
                             this.auction.revealBid(123, 123, {from: alice}),
-                            'Not in auction reveal stage'
+                            'Reveal stage not started'
+                        );
+                    });
+                });
+
+                describe('when reveal time has passed', async function () {
+                    it('should fail to reveal bid', async function () {
+                        await time.increaseTo(this.now.add(this.biddingPeriod).add(this.revealingPeriod));
+
+                        await expectRevert(
+                            this.auction.revealBid(123, 123, {from: alice}),
+                            'Reveal stage passed'
                         );
                     });
                 });
@@ -206,9 +219,9 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
                 describe('when bidding time has passed', async function () {
                     beforeEach(async function () {
                         // Move period past bidding period
-                        await time.increaseTo(this.now.add(this.biddingPeriod));
+                        await time.increaseTo(this.now.add(this.biddingPeriod).add(_1_HOUR));
 
-                        // this.auction.revealBid(123, 123, {from: alice});
+                        await this.auction.revealBid(_50_DAI, web3.utils.toHex('password'), {from: alice});
                     });
 
                     it('fails when reveal bid is not correct', async function () {
@@ -228,12 +241,27 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
         });
 
         // TODO handle cheaters
-        // TODO checks on generated hash
+
+        describe('should generate sealed bid on and off chain', async function () {
+            it('should match', async function () {
+                const onChainBid = await generateSealedBid.call(this, _50_DAI, 'password');
+                const web3Bid = await generateWeb3SealedBid.call(this, _50_DAI, 'password');
+                web3Bid.should.be.eq(onChainBid);
+            });
+        });
 
     });
 
     async function generateSealedBid(value, salt) {
-        // return web3.utils.keccak256(web3.utils.toHex(value) + web3.utils.toHex(salt));
         return this.auction.generateSealedBid(value, web3.utils.toHex(salt));
+    }
+
+    async function generateWeb3SealedBid(value, salt) {
+        const saltedHexValue = web3.utils.toHex(salt);
+        const encoded = web3.eth.abi.encodeParameters(
+            ['uint256', 'uint256'],
+            [value.toString(), saltedHexValue]
+        );
+        return web3.utils.keccak256(encoded);
     }
 });

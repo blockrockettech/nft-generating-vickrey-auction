@@ -54,7 +54,8 @@ contract VickreyAuction {
     }
 
     modifier onlyWhenRevealingOpen(){
-        require(now > endOfBidding && now < endOfBidding, "Not in auction reveal stage");
+        require(now > endOfBidding, "Reveal stage not started");
+        require(now < endOfRevealing, "Reveal stage passed");
         _;
     }
 
@@ -264,7 +265,6 @@ contract VickreyAuction {
     // Utility methods //
     /////////////////////
 
-    // TODO fixme
     function generateSealedBid(uint256 _proposedRevealAmount, uint256 _salt)
     public pure
     returns (bytes32) {
