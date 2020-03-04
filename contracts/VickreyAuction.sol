@@ -54,7 +54,7 @@ contract VickreyAuction {
     }
 
     modifier onlyWhenRevealingOpen(){
-        require(now > endOfBidding && now < endOfBidding, "Auction reveal stage not started yet");
+        require(now > endOfBidding && now < endOfBidding, "Not in auction reveal stage");
         _;
     }
 
