@@ -94,8 +94,10 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
 
         describe('validation checks', async function () {
 
+            // TODO test for unable to escrow funds
+
             it('fails if commitment less than threshold', async function () {
-                const sealedBid = generateSealedBid(_50_DAI, 'password');
+                const sealedBid = await generateSealedBid(_50_DAI, 'password');
                 await expectRevert(
                     this.auction.placeBid(sealedBid, _29_DAI, {from: alice}),
                     'Bid does not meet reserve price'
@@ -111,7 +113,7 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
             });
 
             it('fails if creator tried to place bid', async function () {
-                const sealedBid = generateSealedBid(_50_DAI, 'password');
+                const sealedBid = await generateSealedBid(_50_DAI, 'password');
                 await expectRevert(
                     this.auction.placeBid(sealedBid, _50_DAI, {from: creator}),
                     'Creator cannot bid on their own items'
@@ -123,7 +125,7 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
                 // Move period past bidding period
                 await time.increaseTo(this.now.add(this.biddingPeriod));
 
-                const sealedBid = generateSealedBid(_50_DAI, 'password');
+                const sealedBid = await generateSealedBid(_50_DAI, 'password');
                 await expectRevert(
                     this.auction.placeBid(sealedBid, _50_DAI, {from: alice}),
                     'Auction bidding time period has closed'
@@ -132,11 +134,69 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
 
         });
 
+        describe('on successful bid', async function () {
+
+            beforeEach(async function () {
+                this.sealedBid = await generateSealedBid(_50_DAI, 'password');
+                await this.auction.placeBid(this.sealedBid, _100_DAI, {from: alice});
+            });
+
+            it('should escrow funds', async function () {
+                const balanceOfAuction = await this.mockDai.balanceOf(this.auction.address);
+                balanceOfAuction.should.be.bignumber.eq(_100_DAI);
+            });
+
+            it('participant data is stored', async function () {
+                const {
+                    tokenCommitment,
+                    sealedBid,
+                    revealedBid,
+                    hasRevealed
+                } = await this.auction.getParticipant(alice);
+
+                tokenCommitment.should.be.bignumber.eq(_100_DAI);
+                sealedBid.should.be.eq(this.sealedBid);
+                revealedBid.should.be.bignumber.eq('0');
+                hasRevealed.should.be.eq(false);
+            });
+
+            describe('can withdraw bid', async function () {
+
+                beforeEach(async function () {
+                    await this.auction.withdraw({from: alice});
+                });
+
+                it('funds sent back to bidder', async function () {
+                    const balanceOfAlice = await this.mockDai.balanceOf(alice);
+                    balanceOfAlice.should.be.bignumber.eq(_100_DAI);
+                });
+
+                it('no funds left in escrow', async function () {
+                    const balanceOfAuction = await this.mockDai.balanceOf(this.auction.address);
+                    balanceOfAuction.should.be.bignumber.eq("0");
+                });
+
+                it('participant data is stored', async function () {
+                    const {
+                        tokenCommitment,
+                        sealedBid,
+                        revealedBid,
+                        hasRevealed
+                    } = await this.auction.getParticipant(alice);
+
+                    tokenCommitment.should.be.bignumber.eq('0');
+                    sealedBid.should.be.eq('0x0000000000000000000000000000000000000000000000000000000000000000');
+                    revealedBid.should.be.bignumber.eq('0');
+                    hasRevealed.should.be.eq(false);
+                });
+            });
+        });
+
     });
 
-    const generateSealedBid = (value, salt) => {
-        // FIXME - test this function ... ?
+    const generateSealedBid = async function (value, salt) {
         return web3.utils.keccak256(web3.utils.toHex(value) + web3.utils.toHex(salt));
+        // TODO test
+        // return this.auction.generateSealedBid(value, web3.utils.toHex(salt)).call();
     };
-
 });

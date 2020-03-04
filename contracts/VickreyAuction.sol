@@ -157,7 +157,7 @@ contract VickreyAuction {
         bidder.tokenCommitment = 0;
         bidder.sealedBid = 0;
 
-        require(IERC20(paymentToken).transferFrom(address(this), msg.sender, tokenCommitment), "Unable to withdraw token commitment");
+        require(IERC20(paymentToken).transfer(msg.sender, tokenCommitment), "Unable to withdraw token commitment");
 
         // TODO event
 
@@ -215,7 +215,7 @@ contract VickreyAuction {
 
         // Send back the over committed amount
         if (overCommittedAmount > 0) {
-            require(IERC20(paymentToken).transferFrom(address(this), msg.sender, overCommittedAmount), "Unable to send back over committed funds");
+            require(IERC20(paymentToken).transfer(msg.sender, overCommittedAmount), "Unable to send back over committed funds");
         }
 
         // TODO keep ordered list of revealed bids
@@ -263,6 +263,13 @@ contract VickreyAuction {
     /////////////////////
     // Utility methods //
     /////////////////////
+
+    // TODO fixme
+    function generateSealedBid(uint256 _proposedRevealAmount, uint256 _salt)
+    public pure
+    returns (bytes32) {
+        return keccak256(abi.encodePacked(_proposedRevealAmount, _salt));
+    }
 
     function getParticipant(address _bidder)
     public view
