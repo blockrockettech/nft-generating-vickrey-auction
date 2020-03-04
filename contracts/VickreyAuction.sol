@@ -11,14 +11,6 @@ contract VickreyAuction {
     // Auction Details //
     /////////////////////
 
-    enum AuctionStage {
-        CLOSED, // Auction not created yet
-        OPEN, // Auction created - open for bids
-        REVEALING, // Bidders must reveal
-        RESULTED, //
-        ISSUED      //
-    }
-
     IERC20 public paymentToken;
     IERC721 public nftMinter;
 
@@ -127,7 +119,8 @@ contract VickreyAuction {
         require(msg.sender != owner, "Creator cannot bid on their own items");
 
         Bidder storage bidder = participants[msg.sender];
-        bidder.bidder = msg.sender; // TODO can we ditch this prop
+        bidder.bidder = msg.sender;
+        // TODO can we ditch this prop
 
         // Return the funds already committed if they have some
         if (bidder.tokenCommitment > 0) {
@@ -258,5 +251,22 @@ contract VickreyAuction {
     //
     //        // generates X number of NFTS for those who won
     //    }
+
+
+    /////////////////////
+    // Utility methods //
+    /////////////////////
+
+    function getParticipant(address _bidder)
+    public view
+    returns (uint256 tokenCommitment, bytes32 sealedBid, uint256 revealedBid, bool hasRevealed) {
+        Bidder memory bidder = participants[_bidder];
+        return (
+        bidder.tokenCommitment,
+        bidder.sealedBid,
+        bidder.revealedBid,
+        bidder.hasRevealed
+        );
+    }
 
 }
