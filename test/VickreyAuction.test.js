@@ -225,15 +225,38 @@ contract('VickreyAuction tests', function ([creator, alice, bob, ...accounts]) {
                     });
 
                     it('fails when reveal bid is not correct', async function () {
-
+                        await expectRevert(
+                            this.auction.revealBid(_50_DAI, web3.utils.toHex('Password'), {from: alice}),
+                            'Sealed bid doesnt match'
+                        );
                     });
 
                     it('updates participant state', async function () {
+                        const {
+                            tokenCommitment,
+                            sealedBid,
+                            revealedBid,
+                            hasRevealed
+                        } = await this.auction.getParticipant(alice);
 
+                        tokenCommitment.should.be.bignumber.eq(_100_DAI);
+                        sealedBid.should.be.eq(this.sealedBid);
+                        revealedBid.should.be.bignumber.eq(_50_DAI);
+                        hasRevealed.should.be.eq(true);
                     });
 
-                    it('returns over commitment', async function () {
+                    it('returns over commitment to alice', async function () {
+                        const balanceOfAuction = await this.mockDai.balanceOf(alice);
+                        balanceOfAuction.should.be.bignumber.eq(_50_DAI);
+                    });
 
+                    it('contract balance updated', async function () {
+                        const balanceOfAuction = await this.mockDai.balanceOf(this.auction.address);
+                        balanceOfAuction.should.be.bignumber.eq(_50_DAI);
+                    });
+
+                    it('fails to reveal is already done', async function () {
+                        //
                     });
                 });
 

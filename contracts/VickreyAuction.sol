@@ -178,7 +178,7 @@ contract VickreyAuction {
         Bidder storage bidder = participants[msg.sender];
 
         // Ensure users results valid
-        require(keccak256(abi.encodePacked(_proposedRevealAmount, _salt)) == bidder.sealedBid, "Unable to find matching sealed bid");
+        require(keccak256(abi.encodePacked(_proposedRevealAmount, _salt)) == bidder.sealedBid, "Sealed bid doesnt match");
 
         // Ensure not already revealed
         require(!bidder.hasRevealed, "User already revealed bid");
@@ -210,9 +210,6 @@ contract VickreyAuction {
 
         // Work out the over commitment
         uint256 overCommittedAmount = bidder.tokenCommitment.sub(_proposedRevealAmount);
-
-        // Ensure balance is set to revealed amount
-        bidder.tokenCommitment = _proposedRevealAmount;
 
         // Send back the over committed amount
         if (overCommittedAmount > 0) {
